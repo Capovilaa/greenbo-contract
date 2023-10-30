@@ -20,4 +20,13 @@ contract GreenCarbon {
     function getSaldo() public view returns (uint256) {
         return address(this).balance;
     }
+
+    // Função que retorna uma lista com o histórico de senders
+    function getHistSenders() public view returns (address[] memory) {
+        address[] memory retorno = new address[](idAuxiliar);
+        for (uint256 i = 0; i < idAuxiliar; i++) {
+            retorno[i] = historicoSenders[i];
+        }
+        return retorno;
+    }
 }
