@@ -116,6 +116,15 @@ contract Parceiro {
         return retorno;
     }
 
+    // Função para retornar histórico do planejamento de consumo
+    function getHistPlanejamento() public view returns (uint256[] memory){
+        uint256[] memory retorno = new uint256[](idGravacao);
+        for(uint i = 0; i < idGravacao; i++ ){
+            retorno[i] = historicoPlanejamento[i];
+        }
+        return retorno;
+    }
+
     // Função para retornar o saldo do contrato
     function getSaldo() public view returns (uint){
         return address(this).balance;
