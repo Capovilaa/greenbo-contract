@@ -7,9 +7,8 @@ contract Parceiro {
     address immutable carteira;
     address[] private senders; // Quem manda
     address[] private funders; // Quem recebe
-    address private projeto_um = 0x95E7851B6a390dA02c6552D4dd28af202e5630BF; // Address do contrato que recebe os créditos de carbono
 
-    int256 private saldoCreditoCarbono;
+    int256 private saldoCreditoCarbono = 5;
 
     uint256 idGravacao = 0;
     uint256 fator = 2;
@@ -20,7 +19,8 @@ contract Parceiro {
     mapping(uint256 => int256) private historicoSalcoCC;
     mapping(address => uint256) private historicoTransacoes;
     mapping(uint256 => bytes32) private historicoHash; // ?
-    mapping(uint256 => uint256) private historicoPlanejamento;
+    mapping(uint256 => uint256) private historicoPlanejamentoC02;
+    mapping(uint256 => uint256) private historicoPlanejamentoEnergia; // add esse ainda
 
     // Struct com as informações necessárias para serem armazenadas
     struct Transacoes {
@@ -58,7 +58,7 @@ contract Parceiro {
         // Armazena nos mappings para acessos futuros
         historicoConsumoEnergia[idGravacao] = _consumoEnergia;
         historicoConsumoCO2[idGravacao] = _consumoEnergia;
-        historicoPlanejamento[idGravacao] = _planejamentoConsumoMes;
+        historicoPlanejamentoC02[idGravacao] = _planejamentoConsumoMes;
 
         // Após cada leitura, atualizar o saldo do crédito de carbono
         alteraCreditoCarbono(_consumoEnergia, _planejamentoConsumoMes);
@@ -84,9 +84,13 @@ contract Parceiro {
         adicionaFundos();
     }
 
-    // Função que realiza transferência
-    function transferirSaldo() public restricted{
-        payable(projeto_um).transfer(address(this).balance);
+    // Função que envia creditos de carbono
+    function enviaCredito(int256 _qnt) public restricted {
+        require(
+            _qnt <= saldoCreditoCarbono,
+            "Saldo de creditos de carbono insuficiente"
+        );
+        saldoCreditoCarbono -= _qnt;
     }
 
     // ------- GETS ------- //
@@ -134,11 +138,11 @@ contract Parceiro {
         return retorno;
     }
 
-    // Função para retornar histórico do planejamento de consumo
+    // Função para retornar histórico do planejamento de consumo de CO2
     function getHistPlanejamento() public view returns (uint256[] memory) {
         uint256[] memory retorno = new uint256[](idGravacao);
         for (uint256 i = 0; i < idGravacao; i++) {
-            retorno[i] = historicoPlanejamento[i];
+            retorno[i] = historicoPlanejamentoC02[i];
         }
         return retorno;
     }
