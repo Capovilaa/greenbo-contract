@@ -23,29 +23,23 @@ contract Parceiro {
     mapping(uint256 => uint256) private historicoPlanejamentoEnergia;
     mapping(uint256 => uint256) private historicoConsumoEnergia;
 
-    mapping(uint256 => uint256) private historicoPlanejamentoC02;
-    mapping(uint256 => uint256) private historicoConsumoCO2;
-
+    mapping(uint256 => uint256) private historicoConsumoCO2; // recebe o cálculo da soma de todos os consumos
 
     mapping(uint256 => int256) private historicoSalcoCC;
 
-    mapping(address => uint256) private historicoTransacoes;
+    mapping(uint256 => uint256) private historicoTransacoes;
 
     mapping(uint256 => bytes32) private historicoHash;
 
     // Struct com as informações necessárias para serem armazenadas
     struct Transacoes {
         uint256 idGravado;
-
         uint256 planCombMovel;
         uint256 combMovel;
-
         uint256 planCombEstac;
         uint256 combEstac;
-
         uint256 planConsumoEnergia;
         uint256 consumoEnergia;
-
         uint256 mes;
     }
 
@@ -84,7 +78,7 @@ contract Parceiro {
         historicoCombMovel[idGravacao] = _combMovel;
 
         historicoPlanCombEstac[idGravacao] = _planCombEstac;
-        historicoCombEstac[idGravacao] = _combEstac;        
+        historicoCombEstac[idGravacao] = _combEstac;
 
         historicoPlanejamentoEnergia[idGravacao] = _planConsEnergia;
         historicoConsumoEnergia[idGravacao] = _consumoEnergia;
@@ -94,19 +88,23 @@ contract Parceiro {
         historicoConsumoCO2[idGravacao] = _combEstac + _combMovel + teste;
 
         // Após cada leitura, atualizar o saldo do crédito de carbono
-        // alteraCreditoCarbono(_consumoEnergia, _planConsEnergia);        
-        alteraCreditoCarbono();        
+        // O saldo está sendo calculado pelo planejamento - consumo
+        alteraCreditoCarbono(_planConsEnergia + _planCombMovel + _planCombEstac, _combEstac + _combMovel + _consumoEnergia);
     }
 
     // Função para calcular co2 pelo consumo de energia
-    function calcularCO2Energia(uint256 _consumoEnergia)pure private returns (uint256){
-        return _consumoEnergia * i_fator;        
+    function calcularCO2Energia(uint256 _consumoEnergia)
+        private
+        pure
+        returns (uint256)
+    {
+        return _consumoEnergia * i_fator;
     }
 
     // Função para calcular crédito de carbono dele (planejamento - emissão) * i_fator
-    function alteraCreditoCarbono() private {
-        if(idGravacao != 0){
-            int256 calculo = (int(historicoConsumoCO2[idGravacao-1]) - int256(historicoConsumoCO2[idGravacao]));
+    function alteraCreditoCarbono(uint256 _plan, uint256 _consumo) private {
+        if (idGravacao != 0) {
+            int256 calculo = (int256(_plan) - int256(_consumo));            
             saldoCreditoCarbono += calculo;
         }
         historicoSalcoCC[idGravacao] = saldoCreditoCarbono;
@@ -118,7 +116,7 @@ contract Parceiro {
     // Função para adicionar fundos ao contrato (créditos de carbono)
     function adicionaFundos() public payable {
         funders.push(msg.sender);
-        historicoTransacoes[msg.sender] = msg.value;
+        historicoTransacoes[idGravacao] = msg.value;
     }
 
     receive() external payable {
@@ -136,27 +134,78 @@ contract Parceiro {
 
     // ------- GETS ------- //
 
-    // Função para ler os dados pelo índice
-    // function getLeiturasDados(uint256 i)
-    //     public
-    //     view
-    //     returns (uint256, uint256)
-    // {
-    //     require(i < transacoes.length, "Indice invalido");
-    //     Transacoes memory novaTransacao = transacoes[i];
-    //     return (novaTransacao.consumoCO2, novaTransacao.planejamentoConsumoMes);
-    // }
+    // Função que retorna histórico de plan comb movel
+    function getHistPlanCombMovel() public view returns (uint256[] memory) {
+        uint256[] memory retorno = new uint256[](idGravacao);
+        for (uint256 i = 0; i < idGravacao; i++) {
+            retorno[i] = historicoPlanCombMovel[i];
+        }
+        return retorno;
+    }
 
-    // // Função para retornar o saldo do crédito de carbono atual
-    // function getSaldoCC() public view returns (int256) {
-    //     return saldoCreditoCarbono;
-    // }
+    // Função que retorna histórico de comb movel
+    function getHistCombMovel() public view returns (uint256[] memory) {
+        uint256[] memory retorno = new uint256[](idGravacao);
+        for (uint256 i = 0; i < idGravacao; i++) {
+            retorno[i] = historicoCombMovel[i];
+        }
+        return retorno;
+    }
+
+    // Função que retorna histórico de plan comb estac
+    function getHistPlanCombEstac() public view returns (uint256[] memory) {
+        uint256[] memory retorno = new uint256[](idGravacao);
+        for (uint256 i = 0; i < idGravacao; i++) {
+            retorno[i] = historicoPlanCombEstac[i];
+        }
+        return retorno;
+    }
+
+    // Função que retorna histórico de comb estac
+    function getHistCombEstac() public view returns (uint256[] memory) {
+        uint256[] memory retorno = new uint256[](idGravacao);
+        for (uint256 i = 0; i < idGravacao; i++) {
+            retorno[i] = historicoCombEstac[i];
+        }
+        return retorno;
+    }
+
+    // Função para retornar histórico de consumo de energia por parâmetro
+    function getHistPlanConsumoEnergia()
+        public
+        view
+        returns (uint256[] memory)
+    {
+        uint256[] memory retorno = new uint256[](idGravacao);
+        for (uint256 i = 0; i < idGravacao; i++) {
+            retorno[i] = historicoPlanejamentoEnergia[i];
+        }
+        return retorno;
+    }
+
+    // Função para retornar histórico de consumo do planejamento de energia por parâmetro
+    function getHistConsumoEnergia() public view returns (uint256[] memory) {
+        uint256[] memory retorno = new uint256[](idGravacao);
+        for (uint256 i = 0; i < idGravacao; i++) {
+            retorno[i] = historicoConsumoEnergia[i];
+        }
+        return retorno;
+    }
 
     // Função para retornar histórico de saldos de crédito de carbono por parâmetro
     function getHistSaldoCC() public view returns (int256[] memory) {
         int256[] memory retorno = new int256[](idGravacao);
         for (uint256 i = 0; i < idGravacao; i++) {
             retorno[i] = historicoSalcoCC[i];
+        }
+        return retorno;
+    }
+
+    // Função para retornar histórico de transações
+    function getHistTransacoes() public view returns (uint256[] memory) {
+        uint256[] memory retorno = new uint256[](idGravacao);
+        for (uint256 i = 0; i < idGravacao; i++) {
+            retorno[i] = historicoTransacoes[i];
         }
         return retorno;
     }
@@ -170,27 +219,14 @@ contract Parceiro {
         return retorno;
     }
 
-    // Função para retornar histórico de consumo de energia por parâmetro
-    function getHistConsumoEnergia() public view returns (uint256[] memory) {
-        uint256[] memory retorno = new uint256[](idGravacao);
-        for (uint256 i = 0; i < idGravacao; i++) {
-            retorno[i] = historicoConsumoEnergia[i];
-        }
-        return retorno;
-    }
-
-    // Função para retornar histórico do planejamento de consumo de CO2
-    function getHistPlanejamento() public view returns (uint256[] memory) {
-        uint256[] memory retorno = new uint256[](idGravacao);
-        for (uint256 i = 0; i < idGravacao; i++) {
-            retorno[i] = historicoPlanejamentoC02[i];
-        }
-        return retorno;
-    }
-
     // Função para retornar o saldo do contrato
     function getSaldo() public view returns (uint256) {
         return address(this).balance;
+    }
+
+    // Função para retornar o saldo do contrato
+    function getSaldoCreditoCarbono() public view returns (int256) {
+        return saldoCreditoCarbono;
     }
 
     modifier restricted() {
